@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src https://fonts.gstatic.com;">
+    <title>Кабельний журнал</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .card-hover { transition: all 0.2s ease; }
+        .card-hover:hover { transform: translateY(-2px); }
+        
+        /* Стилі для скролбару */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        
+        /* Toast повідомлення */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 9999;
+            animation: slideIn 0.3s ease;
+        }
+        .toast.success { background: #16a34a; }
+        .toast.error { background: #dc2626; }
+        .toast.info { background: #2563eb; }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div id="app" class="p-4">
+        <div class="max-w-7xl mx-auto">
+            <!-- Header -->
+            <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+                    <div>
+                        <h1 class="text-3xl font-bold text-slate-800 flex items-center gap-3">
+                            <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
+                            </svg>
+                            Кабельний журнал
+                        </h1>
+                        <p class="text-slate-500 mt-1">Управління мережевою інфраструктурою</p>
+                        <p id="dataPathInfo" class="text-xs text-slate-400 mt-1"></p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="backupData()" class="flex items-center gap-2 px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition font-medium" title="Створити резервну копію">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
+                            </svg>
+                            Backup
+                        </button>
+                        <button onclick="printData()" class="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 transition font-medium" title="Друк">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                            </svg>
+                            Друк
+                        </button>
+                        <button onclick="showExportMenu()" class="flex items-center gap-2 px-4 py-2 bg-teal-100 text-teal-700 rounded-lg hover:bg-teal-200 transition font-medium" title="Експорт в Excel/CSV">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            Excel
+                        </button>
+                        <button onclick="importData()" class="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition font-medium">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                            </svg>
+                            Імпорт
+                        </button>
+                        <button onclick="exportData()" class="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                            </svg>
+                            Експорт
+                        </button>
+                        <button onclick="showAddForm()" class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                            Новий запис
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Search and Filter -->
+                <div class="flex flex-col md:flex-row gap-4">
+                    <div class="flex-1 relative">
+                        <svg class="absolute left-3 top-3 text-slate-400 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                        <input type="text" id="searchInput" placeholder="Пошук по всіх полях..." 
+                               oninput="filterEntries()"
+                               class="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                    </div>
+                    <select id="filterType" onchange="filterEntries()" 
+                            class="px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white min-w-48">
+                        <option value="all">Всі типи підключення</option>
+                        <option value="socket">Через розетку</option>
+                        <option value="rack">Пряме (rack)</option>
+                    </select>
+                    <select id="filterStatus" onchange="filterEntries()" 
+                            class="px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white min-w-40">
+                        <option value="all">Всі статуси</option>
+                        <option value="active">Активний</option>
+                        <option value="reserve">Резерв</option>
+                        <option value="disabled">Вимкнений</option>
+                        <option value="test">Тест</option>
+                    </select>
+                </div>
+
+                <!-- Stats -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6" id="statsContainer">
+                </div>
+            </div>
+
+            <!-- Form Modal -->
+            <div id="formModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
+                <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl my-8 fade-in">
+                    <div class="flex items-center justify-between p-6 border-b border-slate-200">
+                        <h2 id="formTitle" class="text-xl font-semibold text-slate-800">Новий запис</h2>
+                        <button onclick="hideForm()" class="text-slate-500 hover:text-slate-700 transition">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <form id="entryForm" onsubmit="saveEntry(event)" class="p-6">
+                        <input type="hidden" id="entryId">
+                        
+                        <!-- Section 1: Location -->
+                        <div class="mb-6">
+                            <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
+                                <span class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-bold">1</span>
+                                Локація і джерело
+                            </h3>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-600 mb-1">Будівля</label>
+                                    <input type="text" id="building" placeholder="A, B, C" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-600 mb-1">Поверх</label>
+                                    <input type="text" id="floor" placeholder="1, 2, 3" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-600 mb-1">Приміщення</label>
+                                    <input type="text" id="room" placeholder="305, 401" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div class="md:col-span-3">
+                                    <label class="block text-sm font-medium text-slate-600 mb-1">Тип підключення</label>
+                                    <select id="connectionType" onchange="toggleConnectionFields()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                        <option value="socket">Через розетку</option>
+                                        <option value="rack">Пряме підключення (rack)</option>
+                                    </select>
+                                </div>
+                                <div id="socketFields" class="md:col-span-3">
+                                    <label class="block text-sm font-medium text-slate-600 mb-1">ID розетки</label>
+                                    <input type="text" id="socketId" placeholder="A-3-305-01-02" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div id="rackFields" class="hidden md:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div class="md:col-span-2">
+                                        <label class="block text-sm font-medium text-slate-600 mb-1">Rack ID</label>
+                                        <input type="text" id="rackId" placeholder="A-1-SR-R03" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-600 mb-1">Unit</label>
+                                        <input type="text" id="unit" placeholder="U25" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-600 mb-1">Hostname пристрою</label>
+                                    <input type="text" id="deviceHostname" placeholder="PC-USER-001" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-600 mb-1">Порт пристрою</label>
+                                    <input type="text" id="devicePort" placeholder="eth0, eth1" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-600 mb-1">Тип пристрою</label>
+                                    <select id="deviceType" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                        <option value="">Оберіть тип</option>
+                                        <option value="computer">Комп'ютер</option>
+                                        <option value="server">Сервер</option>
+                                        <option value="printer">Принтер</option>
+                                        <option value="phone">Телефон</option>
+                                        <option value="ap">Access Point</option>
+                                        <option value="camera">Камера</option>
+                                        <option value="other">Інше</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section 2: Physical Line -->
+                        <div class="mb-6">
+                            <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
+                                <span class="w-6 h-6 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-sm font-bold">2</span>
+                                Фізична лінія
+                            </h3>
+                            <div id="cableFields" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div class="md:col-span-2">
+                                    <label class="block text-sm font-medium text-slate-600 mb-1">Тип кабелю</label>
+                                    <input type="text" id="cableType" placeholder="Cat6 UTP" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-600 mb-1">Довжина (м)</label>
+                                    <input type="text" id="cableLength" placeholder="25" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                            </div>
+                            <div id="patchCordField" class="hidden">
+                                <label class="block text-sm font-medium text-slate-600 mb-1">Патч-корд</label>
+                                <input type="text" id="patchCord" placeholder="Cat6 UTP, 1.5м, синій" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            </div>
+                        </div>
+
+                        <!-- Section 3: Patch Panel (only for socket) -->
+                        <div id="cabinetSection" class="mb-6">
+                            <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
+                                <span class="w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-sm font-bold">3</span>
+                                Комутаційна шафа
+                            </h3>
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-600 mb-1">Локація шафи</label>
+                                    <input type="text" id="cabinetLocation" placeholder="A-3-SR" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-600 mb-1">Rack</label>
+                                    <input type="text" id="rack" placeholder="R05" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-600 mb-1">Патч-панель</label>
+                                    <input type="text" id="patchPanel" placeholder="PP03" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-600 mb-1">Порт</label>
+                                    <input type="text" id="patchPanelPort" placeholder="24" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section 4: Switch -->
+                        <div class="mb-6">
+                            <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
+                                <span class="w-6 h-6 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center text-sm font-bold">4</span>
+                                Активне обладнання
+                            </h3>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div class="md:col-span-2">
+                                    <label class="block text-sm font-medium text-slate-600 mb-1">Rack комутатора</label>
+                                    <input type="text" id="switchRack" placeholder="A-1-SR-R03" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-600 mb-1">Unit</label>
+                                    <input type="text" id="switchUnit" placeholder="U42" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-600 mb-1">Hostname комутатора</label>
+                                    <input type="text" id="switchHostname" placeholder="SW-CORE-01" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-600 mb-1">Management IP</label>
+                                    <input type="text" id="switchMgmtIp" placeholder="10.0.0.1" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-600 mb-1">Порт комутатора</label>
+                                    <input type="text" id="switchPort" placeholder="Gi1/0/12" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-600 mb-1">Швидкість</label>
+                                    <input type="text" id="speed" placeholder="1000/Full" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-600 mb-1">Тип порту</label>
+                                    <select id="portType" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                        <option value="">Оберіть тип</option>
+                                        <option value="access">Access</option>
+                                        <option value="trunk">Trunk</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-600 mb-1">VLAN ID</label>
+                                    <input type="text" id="vlanId" placeholder="100" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-600 mb-1">VLAN опис</label>
+                                    <input type="text" id="vlanDesc" placeholder="Users, Servers" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-600 mb-1">Мережа VLAN</label>
+                                    <input type="text" id="vlanNetwork" placeholder="192.168.20.0/24" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section 5: Administration -->
+                        <div class="mb-6">
+                            <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
+                                <span class="w-6 h-6 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-sm font-bold">5</span>
+                                Адміністрування
+                            </h3>
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-600 mb-1">Статус</label>
+                                    <select id="status" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                        <option value="active">Активний</option>
+                                        <option value="reserve">Резерв</option>
+                                        <option value="disabled">Вимкнений</option>
+                                        <option value="test">Тест</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-600 mb-1">Дата монтажу</label>
+                                    <input type="date" id="installDate" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-600 mb-1">Виконавець</label>
+                                    <input type="text" id="installer" placeholder="Петренко О.В." class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-600 mb-1">Остання перевірка</label>
+                                    <input type="date" id="lastCheck" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div class="md:col-span-4">
+                                    <label class="block text-sm font-medium text-slate-600 mb-1">Примітки</label>
+                                    <textarea id="notes" rows="3" placeholder="Додаткова інформація..." class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="flex gap-3 pt-4 border-t border-slate-200">
+                            <button type="submit" class="flex items-center gap-2 px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                Зберегти
+                            </button>
+                            <button type="button" onclick="hideForm()" class="px-6 py-2.5 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition font-medium">
+                                Скасувати
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Entries List -->
+            <div id="entriesContainer" class="grid grid-cols-1 gap-4">
+            </div>
+
+            <!-- Export Menu Modal -->
+            <div id="exportModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                <div class="bg-white rounded-xl shadow-2xl w-full max-w-md fade-in">
+                    <div class="flex items-center justify-between p-6 border-b border-slate-200">
+                        <h2 class="text-xl font-semibold text-slate-800">Експорт даних</h2>
+                        <button onclick="hideExportMenu()" class="text-slate-500 hover:text-slate-700 transition">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="p-6 space-y-3">
+                        <button onclick="exportToCSV()" class="w-full flex items-center gap-4 p-4 border-2 border-slate-200 rounded-lg hover:border-teal-500 hover:bg-teal-50 transition">
+                            <div class="w-12 h-12 bg-teal-100 rounded-lg flex items-center justify-center">
+                                <svg class="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                            </div>
+                            <div class="text-left">
+                                <div class="font-semibold text-slate-800">CSV (Excel)</div>
+                                <div class="text-sm text-slate-500">Відкривається в Excel, Google Sheets</div>
+                            </div>
+                        </button>
+                        <button onclick="exportToExcelXML()" class="w-full flex items-center gap-4 p-4 border-2 border-slate-200 rounded-lg hover:border-green-500 hover:bg-green-50 transition">
+                            <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                </svg>
+                            </div>
+                            <div class="text-left">
+                                <div class="font-semibold text-slate-800">Excel XML (.xls)</div>
+                                <div class="text-sm text-slate-500">Нативний формат Excel з форматуванням</div>
+                            </div>
+                        </button>
+                        <button onclick="exportToHTML()" class="w-full flex items-center gap-4 p-4 border-2 border-slate-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition">
+                            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                            </div>
+                            <div class="text-left">
+                                <div class="font-semibold text-slate-800">HTML таблиця</div>
+                                <div class="text-sm text-slate-500">Для перегляду в браузері або друку</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div id="emptyState" class="hidden bg-white rounded-xl shadow-lg p-12 text-center">
+                <svg class="w-16 h-16 mx-auto text-slate-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
+                </svg>
+                <h3 class="text-xl font-semibold text-slate-700 mb-2">Немає записів</h3>
+                <p class="text-slate-500 mb-4">Додайте перший запис до кабельного журналу</p>
+                <button onclick="showAddForm()" class="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    Додати запис
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let entries = [];
+        let editingId = null;
+        let isElectron = typeof window.electronAPI !== 'undefined';
+
+        // Toast notification
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadEntries();
+            renderEntries();
+            updateStats();
+            
+            // Показати шлях до файлу даних
+            if (isElectron) {
+                const path = await window.electronAPI.getDataPath();
+                document.getElementById('dataPathInfo').textContent = `📁 Дані: ${path}`;
+            } else {
+                document.getElementById('dataPathInfo').textContent = '📁 Дані: localStorage браузера';
+            }
+        });
+
+        // Load entries
+        async function loadEntries() {
+            try {
+                if (isElectron) {
+                    entries = await window.electronAPI.loadData();
+                } else {
+                    const stored = localStorage.getItem('cable_journal_entries');
+                    entries = stored ? JSON.parse(stored) : [];
+                }
+            } catch (error) {
+                console.error('Помилка завантаження:', error);
+                entries = [];
+            }
+        }
+
+        // Save entries
+        async function saveEntriesToStorage() {
+            try {
+                if (isElectron) {
+                    const result = await window.electronAPI.saveData(entries);
+                    if (!result.success) {
+                        showToast('Помилка збереження: ' + result.error, 'error');
+                    }
+                } else {
+                    localStorage.setItem('cable_journal_entries', JSON.stringify(entries));
+                }
+            } catch (error) {
+                showToast('Помилка збереження: ' + error.message, 'error');
+            }
+        }
+
+        // Update statistics
+        function updateStats() {
+            const active = entries.filter(e => e.status === 'active').length;
+            const reserve = entries.filter(e => e.status === 'reserve').length;
+            const socket = entries.filter(e => e.connectionType === 'socket').length;
+            const rack = entries.filter(e => e.connectionType === 'rack').length;
+
+            document.getElementById('statsContainer').innerHTML = `
+                <div class="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-4">
+                    <div class="text-2xl font-bold text-blue-700">${entries.length}</div>
+                    <div class="text-sm text-blue-600">Всього записів</div>
+                </div>
+                <div class="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-4">
+                    <div class="text-2xl font-bold text-green-700">${active}</div>
+                    <div class="text-sm text-green-600">Активних</div>
+                </div>
+                <div class="bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg p-4">
+                    <div class="text-2xl font-bold text-purple-700">${socket}</div>
+                    <div class="text-sm text-purple-600">Через розетку</div>
+                </div>
+                <div class="bg-gradient-to-r from-indigo-50 to-indigo-100 rounded-lg p-4">
+                    <div class="text-2xl font-bold text-indigo-700">${rack}</div>
+                    <div class="text-sm text-indigo-600">Прямі (rack)</div>
+                </div>
+            `;
+        }
+
+        // Filter entries
+        function filterEntries() {
+            renderEntries();
+        }
+
+        // Get filtered entries
+        function getFilteredEntries() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const filterType = document.getElementById('filterType').value;
+            const filterStatus = document.getElementById('filterStatus').value;
+
+            return entries.filter(entry => {
+                const matchesSearch = searchTerm === '' || 
+                    Object.values(entry).some(val => 
+                        String(val).toLowerCase().includes(searchTerm)
+                    );
+                const matchesType = filterType === 'all' || entry.connectionType === filterType;
+                const matchesStatus = filterStatus === 'all' || entry.status === filterStatus;
+                return matchesSearch && matchesType && matchesStatus;
+            });
+        }
+
+        // Render entries
+        function renderEntries() {
+            const filtered = getFilteredEntries();
+            const container = document.getElementById('entriesContainer');
+            const emptyState = document.getElementById('emptyState');
+
+            if (filtered.length === 0) {
+                container.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            
+            container.innerHTML = filtered.map(entry => `
+                <div class="bg-white rounded-xl shadow-lg p-6 card-hover fade-in">
+                    <div class="flex items-start justify-between mb-4">
+                        <div>
+                            <div class="flex flex-wrap items-center gap-2 mb-2">
+                                <span class="px-3 py-1 rounded-full text-sm font-semibold ${getStatusClass(entry.status)}">
+                                    ${getStatusLabel(entry.status)}
+                                </span>
+                                <span class="px-3 py-1 rounded-full text-sm font-semibold ${
+                                    entry.connectionType === 'socket' 
+                                        ? 'bg-purple-100 text-purple-800' 
+                                        : 'bg-indigo-100 text-indigo-800'
+                                }">
+                                    ${entry.connectionType === 'socket' ? 'Розетка' : 'Rack'}
+                                </span>
+                                ${entry.deviceType ? `
+                                    <span class="px-3 py-1 rounded-full text-sm font-semibold bg-slate-100 text-slate-700">
+                                        ${getDeviceTypeLabel(entry.deviceType)}
+                                    </span>
+                                ` : ''}
+                            </div>
+                            <h3 class="text-xl font-bold text-slate-800">
+                                ${entry.deviceHostname || 'Без назви'}
+                            </h3>
+                            <p class="text-slate-600">
+                                ${[entry.building, entry.floor, entry.room].filter(Boolean).join('-') || 'Локація не вказана'}
+                                ${entry.devicePort ? ` | ${entry.devicePort}` : ''}
+                            </p>
+                        </div>
+                        <div class="flex gap-1">
+                            <button onclick="editEntry('${entry.id}')" 
+                                    class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Редагувати">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                </svg>
+                            </button>
+                            <button onclick="duplicateEntry('${entry.id}')" 
+                                    class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition" title="Дублювати">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                </svg>
+                            </button>
+                            <button onclick="deleteEntry('${entry.id}')" 
+                                    class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition" title="Видалити">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 text-sm">
+                        ${entry.connectionType === 'socket' && entry.socketId ? `
+                            <div>
+                                <span class="font-semibold text-slate-500 text-xs uppercase tracking-wide">Розетка</span>
+                                <p class="text-slate-800 font-medium">${entry.socketId}</p>
+                            </div>
+                        ` : ''}
+                        
+                        ${entry.connectionType === 'rack' && entry.rackId ? `
+                            <div>
+                                <span class="font-semibold text-slate-500 text-xs uppercase tracking-wide">Rack/Unit</span>
+                                <p class="text-slate-800 font-medium">${entry.rackId}${entry.unit ? ' / ' + entry.unit : ''}</p>
+                            </div>
+                        ` : ''}
+
+                        ${entry.connectionType === 'socket' && entry.patchPanel ? `
+                            <div>
+                                <span class="font-semibold text-slate-500 text-xs uppercase tracking-wide">Патч-панель</span>
+                                <p class="text-slate-800 font-medium">${[entry.cabinetLocation, entry.rack, entry.patchPanel, entry.patchPanelPort].filter(Boolean).join('-')}</p>
+                            </div>
+                        ` : ''}
+
+                        ${entry.switchHostname ? `
+                            <div>
+                                <span class="font-semibold text-slate-500 text-xs uppercase tracking-wide">Комутатор</span>
+                                <p class="text-slate-800 font-medium">${entry.switchHostname}</p>
+                            </div>
+                        ` : ''}
+
+                        ${entry.switchPort ? `
+                            <div>
+                                <span class="font-semibold text-slate-500 text-xs uppercase tracking-wide">Порт</span>
+                                <p class="text-slate-800 font-medium">${entry.switchPort}</p>
+                            </div>
+                        ` : ''}
+
+                        ${entry.switchMgmtIp ? `
+                            <div>
+                                <span class="font-semibold text-slate-500 text-xs uppercase tracking-wide">Mgmt IP</span>
+                                <p class="text-slate-800 font-medium">${entry.switchMgmtIp}</p>
+                            </div>
+                        ` : ''}
+
+                        ${entry.vlanId ? `
+                            <div>
+                                <span class="font-semibold text-slate-500 text-xs uppercase tracking-wide">VLAN</span>
+                                <p class="text-slate-800 font-medium">${entry.vlanId}${entry.vlanDesc ? ' (' + entry.vlanDesc + ')' : ''}</p>
+                            </div>
+                        ` : ''}
+
+                        ${entry.speed ? `
+                            <div>
+                                <span class="font-semibold text-slate-500 text-xs uppercase tracking-wide">Швидкість</span>
+                                <p class="text-slate-800 font-medium">${entry.speed}</p>
+                            </div>
+                        ` : ''}
+
+                        ${entry.installer ? `
+                            <div>
+                                <span class="font-semibold text-slate-500 text-xs uppercase tracking-wide">Виконавець</span>
+                                <p class="text-slate-800 font-medium">${entry.installer}</p>
+                            </div>
+                        ` : ''}
+
+                        ${entry.installDate ? `
+                            <div>
+                                <span class="font-semibold text-slate-500 text-xs uppercase tracking-wide">Дата монтажу</span>
+                                <p class="text-slate-800 font-medium">${formatDate(entry.installDate)}</p>
+                            </div>
+                        ` : ''}
+
+                        ${entry.notes ? `
+                            <div class="col-span-2 md:col-span-3 lg:col-span-4 pt-2 border-t border-slate-100">
+                                <span class="font-semibold text-slate-500 text-xs uppercase tracking-wide">Примітки</span>
+                                <p class="text-slate-700">${entry.notes}</p>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Helper functions
+        function getStatusClass(status) {
+            const classes = {
+                active: 'bg-green-100 text-green-800',
+                reserve: 'bg-yellow-100 text-yellow-800',
+                disabled: 'bg-red-100 text-red-800',
+                test: 'bg-blue-100 text-blue-800'
+            };
+            return classes[status] || 'bg-slate-100 text-slate-800';
+        }
+
+        function getStatusLabel(status) {
+            const labels = {
+                active: 'Активний',
+                reserve: 'Резерв',
+                disabled: 'Вимкнений',
+                test: 'Тест'
+            };
+            return labels[status] || status;
+        }
+
+        function getDeviceTypeLabel(type) {
+            const labels = {
+                computer: 'Комп\'ютер',
+                server: 'Сервер',
+                printer: 'Принтер',
+                phone: 'Телефон',
+                ap: 'Access Point',
+                camera: 'Камера',
+                other: 'Інше'
+            };
+            return labels[type] || type;
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('uk-UA');
+        }
+
+        // Show add form
+        function showAddForm() {
+            editingId = null;
+            document.getElementById('formTitle').textContent = 'Новий запис';
+            document.getElementById('entryForm').reset();
+            document.getElementById('entryId').value = '';
+            toggleConnectionFields();
+            document.getElementById('formModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        // Hide form
+        function hideForm() {
+            document.getElementById('formModal').classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
+        // Toggle connection type fields
+        function toggleConnectionFields() {
+            const connectionType = document.getElementById('connectionType').value;
+            const isSocket = connectionType === 'socket';
+            
+            document.getElementById('socketFields').classList.toggle('hidden', !isSocket);
+            document.getElementById('rackFields').classList.toggle('hidden', isSocket);
+            document.getElementById('cableFields').classList.toggle('hidden', !isSocket);
+            document.getElementById('patchCordField').classList.toggle('hidden', isSocket);
+            document.getElementById('cabinetSection').classList.toggle('hidden', !isSocket);
+        }
+
+        // Save entry
+        async function saveEntry(event) {
+            event.preventDefault();
+            
+            const formFields = [
+                'building', 'floor', 'room', 'connectionType', 'socketId', 'rackId', 'unit',
+                'deviceHostname', 'devicePort', 'deviceType', 'cableType', 'cableLength',
+                'patchCord', 'cabinetLocation', 'rack', 'patchPanel', 'patchPanelPort',
+                'switchRack', 'switchUnit', 'switchHostname', 'switchMgmtIp', 'switchPort',
+                'speed', 'portType', 'vlanId', 'vlanDesc', 'vlanNetwork', 'status',
+                'installDate', 'installer', 'lastCheck', 'notes'
+            ];
+
+            const entry = {
+                id: editingId || `cable_${Date.now()}`,
+                timestamp: new Date().toISOString()
+            };
+
+            formFields.forEach(field => {
+                entry[field] = document.getElementById(field).value;
+            });
+
+            if (editingId) {
+                const index = entries.findIndex(e => e.id === editingId);
+                if (index !== -1) {
+                    entries[index] = entry;
+                }
+            } else {
+                entries.push(entry);
+            }
+
+            await saveEntriesToStorage();
+            renderEntries();
+            updateStats();
+            hideForm();
+            showToast(editingId ? 'Запис оновлено' : 'Запис додано', 'success');
+        }
+
+        // Edit entry
+        function editEntry(id) {
+            const entry = entries.find(e => e.id === id);
+            if (!entry) return;
+
+            editingId = id;
+            document.getElementById('formTitle').textContent = 'Редагувати запис';
+            document.getElementById('entryId').value = id;
+
+            Object.keys(entry).forEach(key => {
+                const field = document.getElementById(key);
+                if (field) {
+                    field.value = entry[key] || '';
+                }
+            });
+
+            toggleConnectionFields();
+            document.getElementById('formModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        // Duplicate entry
+        async function duplicateEntry(id) {
+            const entry = entries.find(e => e.id === id);
+            if (!entry) return;
+
+            const newEntry = {
+                ...entry,
+                id: `cable_${Date.now()}`,
+                timestamp: new Date().toISOString(),
+                deviceHostname: entry.deviceHostname ? entry.deviceHostname + ' (копія)' : 'Копія'
+            };
+
+            entries.push(newEntry);
+            await saveEntriesToStorage();
+            renderEntries();
+            updateStats();
+            showToast('Запис дубльовано', 'success');
+        }
+
+        // Delete entry
+        async function deleteEntry(id) {
+            if (!confirm('Видалити цей запис?')) return;
+            
+            entries = entries.filter(e => e.id !== id);
+            await saveEntriesToStorage();
+            renderEntries();
+            updateStats();
+            showToast('Запис видалено', 'success');
+        }
+
+        // Export data
+        async function exportData() {
+            if (entries.length === 0) {
+                showToast('Немає даних для експорту', 'error');
+                return;
+            }
+
+            if (isElectron) {
+                const result = await window.electronAPI.exportData(entries);
+                if (result.success) {
+                    showToast('Дані експортовано: ' + result.filePath, 'success');
+                } else if (!result.canceled) {
+                    showToast('Помилка експорту: ' + result.error, 'error');
+                }
+            } else {
+                const dataStr = JSON.stringify(entries, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(dataBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `cable_journal_${new Date().toISOString().split('T')[0]}.json`;
+                link.click();
+                URL.revokeObjectURL(url);
+                showToast('Дані експортовано', 'success');
+            }
+        }
+
+        // Import data
+        async function importData() {
+            if (isElectron) {
+                const result = await window.electronAPI.importData();
+                if (result.success) {
+                    const existingIds = new Set(entries.map(e => e.id));
+                    const newEntries = result.entries.filter(e => !existingIds.has(e.id));
+                    entries = [...entries, ...newEntries];
+                    await saveEntriesToStorage();
+                    renderEntries();
+                    updateStats();
+                    showToast(`Імпортовано ${newEntries.length} записів`, 'success');
+                } else if (!result.canceled) {
+                    showToast('Помилка імпорту: ' + result.error, 'error');
+                }
+            } else {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.json';
+                input.onchange = async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = async (e) => {
+                        try {
+                            const importedData = JSON.parse(e.target.result);
+                            const existingIds = new Set(entries.map(e => e.id));
+                            const newEntries = importedData.filter(e => !existingIds.has(e.id));
+                            entries = [...entries, ...newEntries];
+                            await saveEntriesToStorage();
+                            renderEntries();
+                            updateStats();
+                            showToast(`Імпортовано ${newEntries.length} записів`, 'success');
+                        } catch (error) {
+                            showToast('Помилка імпорту: ' + error.message, 'error');
+                        }
+                    };
+                    reader.readAsText(file);
+                };
+                input.click();
+            }
+        }
+
+        // Backup data
+        async function backupData() {
+            if (!isElectron) {
+                showToast('Backup доступний тільки в desktop версії', 'info');
+                return;
+            }
+            
+            if (entries.length === 0) {
+                showToast('Немає даних для backup', 'error');
+                return;
+            }
+
+            const result = await window.electronAPI.backupData(entries);
+            if (result.success) {
+                showToast('Backup створено: ' + result.filePath, 'success');
+            } else {
+                showToast('Помилка backup: ' + result.error, 'error');
+            }
+        }
+
+        // Close modal on outside click
+        document.getElementById('formModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                hideForm();
+            }
+        });
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                hideForm();
+                hideExportMenu();
+            }
+        });
+
+        // Export menu modal handlers
+        document.getElementById('exportModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                hideExportMenu();
+            }
+        });
+
+        function showExportMenu() {
+            if (entries.length === 0) {
+                showToast('Немає даних для експорту', 'error');
+                return;
+            }
+            document.getElementById('exportModal').classList.remove('hidden');
+        }
+
+        function hideExportMenu() {
+            document.getElementById('exportModal').classList.add('hidden');
+        }
+
+        // Column definitions for export
+        const exportColumns = [
+            { key: 'deviceHostname', label: 'Hostname' },
+            { key: 'building', label: 'Будівля' },
+            { key: 'floor', label: 'Поверх' },
+            { key: 'room', label: 'Приміщення' },
+            { key: 'connectionType', label: 'Тип підключення' },
+            { key: 'socketId', label: 'ID розетки' },
+            { key: 'rackId', label: 'Rack ID' },
+            { key: 'unit', label: 'Unit' },
+            { key: 'devicePort', label: 'Порт пристрою' },
+            { key: 'deviceType', label: 'Тип пристрою' },
+            { key: 'cableType', label: 'Тип кабелю' },
+            { key: 'cableLength', label: 'Довжина (м)' },
+            { key: 'cabinetLocation', label: 'Локація шафи' },
+            { key: 'rack', label: 'Rack' },
+            { key: 'patchPanel', label: 'Патч-панель' },
+            { key: 'patchPanelPort', label: 'Порт ПП' },
+            { key: 'switchHostname', label: 'Комутатор' },
+            { key: 'switchMgmtIp', label: 'Mgmt IP' },
+            { key: 'switchPort', label: 'Порт комутатора' },
+            { key: 'speed', label: 'Швидкість' },
+            { key: 'portType', label: 'Тип порту' },
+            { key: 'vlanId', label: 'VLAN ID' },
+            { key: 'vlanDesc', label: 'VLAN опис' },
+            { key: 'vlanNetwork', label: 'Мережа VLAN' },
+            { key: 'status', label: 'Статус' },
+            { key: 'installDate', label: 'Дата монтажу' },
+            { key: 'installer', label: 'Виконавець' },
+            { key: 'notes', label: 'Примітки' }
+        ];
+
+        // Export to CSV
+        function exportToCSV() {
+            const filtered = getFilteredEntries();
+            
+            // BOM for UTF-8
+            let csv = '\uFEFF';
+            
+            // Header
+            csv += exportColumns.map(c => `"${c.label}"`).join(';') + '\n';
+            
+            // Data rows
+            filtered.forEach(entry => {
+                const row = exportColumns.map(col => {
+                    let value = entry[col.key] || '';
+                    // Translate status and types
+                    if (col.key === 'status') value = getStatusLabel(value);
+                    if (col.key === 'deviceType') value = getDeviceTypeLabel(value);
+                    if (col.key === 'connectionType') value = value === 'socket' ? 'Розетка' : 'Rack';
+                    // Escape quotes
+                    value = String(value).replace(/"/g, '""');
+                    return `"${value}"`;
+                });
+                csv += row.join(';') + '\n';
+            });
+
+            downloadFile(csv, `cable_journal_${new Date().toISOString().split('T')[0]}.csv`, 'text/csv;charset=utf-8');
+            hideExportMenu();
+            showToast('CSV експортовано', 'success');
+        }
+
+        // Export to Excel XML
+        function exportToExcelXML() {
+            const filtered = getFilteredEntries();
+            
+            let xml = `<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+<Styles>
+    <Style ss:ID="Header">
+        <Font ss:Bold="1" ss:Color="#FFFFFF"/>
+        <Interior ss:Color="#2563EB" ss:Pattern="Solid"/>
+        <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+    </Style>
+    <Style ss:ID="Active">
+        <Interior ss:Color="#DCFCE7" ss:Pattern="Solid"/>
+    </Style>
+    <Style ss:ID="Reserve">
+        <Interior ss:Color="#FEF9C3" ss:Pattern="Solid"/>
+    </Style>
+    <Style ss:ID="Disabled">
+        <Interior ss:Color="#FEE2E2" ss:Pattern="Solid"/>
+    </Style>
+    <Style ss:ID="Test">
+        <Interior ss:Color="#DBEAFE" ss:Pattern="Solid"/>
+    </Style>
+</Styles>
+<Worksheet ss:Name="Кабельний журнал">
+<Table>`;
+
+            // Header row
+            xml += '\n<Row ss:StyleID="Header">';
+            exportColumns.forEach(col => {
+                xml += `<Cell><Data ss:Type="String">${escapeXml(col.label)}</Data></Cell>`;
+            });
+            xml += '</Row>';
+
+            // Data rows
+            filtered.forEach(entry => {
+                const styleId = entry.status === 'active' ? 'Active' : 
+                               entry.status === 'reserve' ? 'Reserve' :
+                               entry.status === 'disabled' ? 'Disabled' : 
+                               entry.status === 'test' ? 'Test' : '';
+                
+                xml += `\n<Row${styleId ? ` ss:StyleID="${styleId}"` : ''}>`;
+                exportColumns.forEach(col => {
+                    let value = entry[col.key] || '';
+                    if (col.key === 'status') value = getStatusLabel(value);
+                    if (col.key === 'deviceType') value = getDeviceTypeLabel(value);
+                    if (col.key === 'connectionType') value = value === 'socket' ? 'Розетка' : 'Rack';
+                    xml += `<Cell><Data ss:Type="String">${escapeXml(value)}</Data></Cell>`;
+                });
+                xml += '</Row>';
+            });
+
+            xml += '\n</Table>\n</Worksheet>\n</Workbook>';
+
+            downloadFile(xml, `cable_journal_${new Date().toISOString().split('T')[0]}.xls`, 'application/vnd.ms-excel');
+            hideExportMenu();
+            showToast('Excel експортовано', 'success');
+        }
+
+        // Export to HTML
+        function exportToHTML() {
+            const filtered = getFilteredEntries();
+            
+            let html = `<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Кабельний журнал - ${new Date().toLocaleDateString('uk-UA')}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h1 { color: #1e40af; }
+        .info { color: #64748b; margin-bottom: 20px; }
+        table { border-collapse: collapse; width: 100%; font-size: 12px; }
+        th, td { border: 1px solid #cbd5e1; padding: 8px; text-align: left; }
+        th { background: #2563eb; color: white; font-weight: bold; }
+        tr:nth-child(even) { background: #f8fafc; }
+        .active { background: #dcfce7 !important; }
+        .reserve { background: #fef9c3 !important; }
+        .disabled { background: #fee2e2 !important; }
+        .test { background: #dbeafe !important; }
+        @media print {
+            body { margin: 0; }
+            table { font-size: 10px; }
+            th, td { padding: 4px; }
+        }
+    </style>
+</head>
+<body>
+    <h1>Кабельний журнал</h1>
+    <p class="info">Експортовано: ${new Date().toLocaleString('uk-UA')} | Записів: ${filtered.length}</p>
+    <table>
+        <thead>
+            <tr>${exportColumns.map(c => `<th>${c.label}</th>`).join('')}</tr>
+        </thead>
+        <tbody>`;
+
+            filtered.forEach(entry => {
+                html += `\n            <tr class="${entry.status}">`;
+                exportColumns.forEach(col => {
+                    let value = entry[col.key] || '';
+                    if (col.key === 'status') value = getStatusLabel(value);
+                    if (col.key === 'deviceType') value = getDeviceTypeLabel(value);
+                    if (col.key === 'connectionType') value = value === 'socket' ? 'Розетка' : 'Rack';
+                    html += `<td>${escapeHtml(value)}</td>`;
+                });
+                html += '</tr>';
+            });
+
+            html += `
+        </tbody>
+    </table>
+</body>
+</html>`;
+
+            downloadFile(html, `cable_journal_${new Date().toISOString().split('T')[0]}.html`, 'text/html;charset=utf-8');
+            hideExportMenu();
+            showToast('HTML експортовано', 'success');
+        }
+
+        // Print data
+        function printData() {
+            if (entries.length === 0) {
+                showToast('Немає даних для друку', 'error');
+                return;
+            }
+
+            const filtered = getFilteredEntries();
+            
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Кабельний журнал - Друк</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; padding: 15px; }
+        h1 { font-size: 18px; color: #1e40af; margin-bottom: 5px; }
+        .info { font-size: 11px; color: #64748b; margin-bottom: 15px; }
+        table { border-collapse: collapse; width: 100%; font-size: 9px; }
+        th, td { border: 1px solid #94a3b8; padding: 4px 6px; text-align: left; }
+        th { background: #2563eb; color: white; font-weight: bold; font-size: 8px; }
+        tr:nth-child(even) { background: #f1f5f9; }
+        .active { background: #dcfce7 !important; }
+        .reserve { background: #fef9c3 !important; }
+        .disabled { background: #fee2e2 !important; }
+        .test { background: #dbeafe !important; }
+        @page { size: landscape; margin: 10mm; }
+    </style>
+</head>
+<body>
+    <h1>Кабельний журнал</h1>
+    <p class="info">Дата: ${new Date().toLocaleString('uk-UA')} | Записів: ${filtered.length}</p>
+    <table>
+        <thead>
+            <tr>${exportColumns.map(c => `<th>${c.label}</th>`).join('')}</tr>
+        </thead>
+        <tbody>`);
+
+            filtered.forEach(entry => {
+                printWindow.document.write(`<tr class="${entry.status}">`);
+                exportColumns.forEach(col => {
+                    let value = entry[col.key] || '';
+                    if (col.key === 'status') value = getStatusLabel(value);
+                    if (col.key === 'deviceType') value = getDeviceTypeLabel(value);
+                    if (col.key === 'connectionType') value = value === 'socket' ? 'Розетка' : 'Rack';
+                    printWindow.document.write(`<td>${escapeHtml(value)}</td>`);
+                });
+                printWindow.document.write('</tr>');
+            });
+
+            printWindow.document.write(`
+        </tbody>
+    </table>
+    <script>
+        window.onload = function() {
+            window.print();
+        };
+    <\/script>
+</body>
+</html>`);
+            printWindow.document.close();
+        }
+
+        // Helper: Download file
+        function downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Helper: Escape XML
+        function escapeXml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&apos;');
+        }
+
+        // Helper: Escape HTML
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+    </script>
+</body>
+</html>
