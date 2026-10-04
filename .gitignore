@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Production build artifacts
+dist/
+
+# Local database and runtime storage
+cable_journal_data.json
+backups/
+*.tmp
+
+# Operating system files
+Thumbs.db
+.DS_Store
+
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

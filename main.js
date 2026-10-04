@@ -102,7 +102,9 @@ ipcMain.handle('load-data', async () => {
 ipcMain.handle('save-data', async (event, entries) => {
     try {
         const data = JSON.stringify(entries, null, 2);
-        fs.writeFileSync(dataFilePath, data, 'utf-8');
+        const tempFilePath = `${dataFilePath}.tmp`;
+        fs.writeFileSync(tempFilePath, data, 'utf-8');
+        fs.renameSync(tempFilePath, dataFilePath);
         return { success: true };
     } catch (error) {
         console.error('Помилка збереження:', error);
@@ -177,7 +179,9 @@ ipcMain.handle('backup-data', async (event, entries) => {
         );
         
         const data = JSON.stringify(entries, null, 2);
-        fs.writeFileSync(backupPath, data, 'utf-8');
+        const tempBackupPath = `${backupPath}.tmp`;
+        fs.writeFileSync(tempBackupPath, data, 'utf-8');
+        fs.renameSync(tempBackupPath, backupPath);
         
         return { success: true, filePath: backupPath };
     } catch (error) {
